@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#08080a">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Body Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#08080a;--bg2:#0e0e12;--bg3:#141418;--bg4:#1a1a20;--bg5:#222228;--border:#1e1e25;--border2:#2a2a33;--text:#e4e2df;--text2:#a09da6;--text3:#6b6874;--text4:#44424d;--gold:#c5a05e;--gold2:#a08040;--gold-g:rgba(197,160,94,0.07);--gold-b:rgba(197,160,94,0.25);--red:#c45c5c;--green:#4a9e6e;--green2:rgba(74,158,110,0.15);--blue:#5b8fb9;--orange:#c48544;--purple:#8b6db5;--r:8px;--ff-d:'Bebas Neue',sans-serif;--ff-b:'DM Sans',sans-serif;--ff-m:'JetBrains Mono',monospace}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--text);font-family:var(--ff-b);font-size:14px;-webkit-font-smoothing:antialiased;display:flex;flex-direction:column}
+
+/* ── APP SHELL ── */
+.app{flex:1;display:flex;flex-direction:column;overflow:hidden;max-width:480px;margin:0 auto;width:100%}
+.app-header{padding:16px 20px 12px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.app-logo{font-family:var(--ff-d);font-size:24px;letter-spacing:2px;color:var(--text)}
+.app-logo span{color:var(--gold)}
+.app-actions{display:flex;gap:8px}
+.app-btn{width:34px;height:34px;border-radius:50%;background:var(--bg3);border:1px solid var(--border);color:var(--text3);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;transition:all .2s}
+.app-btn:hover,.app-btn:active{border-color:var(--gold-b);color:var(--gold)}
+
+/* ── SCREENS ── */
+.screen{flex:1;overflow-y:auto;overflow-x:hidden;padding:0 20px 100px;display:none;-webkit-overflow-scrolling:touch}
+.screen.active{display:block}
+.screen::-webkit-scrollbar{width:3px}.screen::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+
+/* ── BOTTOM NAV ── */
+.bnav{display:flex;background:rgba(8,8,10,0.95);backdrop-filter:blur(12px);border-top:1px solid var(--border);flex-shrink:0;padding:6px 0 env(safe-area-inset-bottom,8px)}
+.bnav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 0;cursor:pointer;transition:color .2s;color:var(--text4)}
+.bnav-item.active{color:var(--gold)}
+.bnav-icon{font-size:20px}
+.bnav-label{font-family:var(--ff-m);font-size:8px;letter-spacing:1px;text-transform:uppercase}
+
+/* ── PROGRESS RING ── */
+.ring-wrap{display:flex;justify-content:center;margin:16px 0}
+.ring-center{text-align:center}
+.ring-pct{font-family:var(--ff-d);font-size:42px;color:var(--text);letter-spacing:1px;line-height:1}
+.ring-sub{font-family:var(--ff-m);font-size:9px;color:var(--text3);letter-spacing:1.5px;text-transform:uppercase;margin-top:2px}
+
+/* ── STAT CARDS ── */
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:16px 0}
+.stat{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:14px;position:relative;overflow:hidden}
+.stat-label{font-family:var(--ff-m);font-size:9px;letter-spacing:1.2px;text-transform:uppercase;color:var(--text3);margin-bottom:4px}
+.stat-val{font-family:var(--ff-d);font-size:26px;color:var(--text);letter-spacing:1px;line-height:1.1}
+.stat-unit{font-family:var(--ff-m);font-size:10px;color:var(--text4);margin-left:2px}
+.stat-delta{font-family:var(--ff-m);font-size:10px;margin-top:4px;letter-spacing:.3px}
+.stat-delta.pos{color:var(--green)}.stat-delta.neg{color:var(--red)}.stat-delta.neutral{color:var(--text4)}
+.stat-bar{position:absolute;bottom:0;left:0;right:0;height:3px;background:var(--bg5)}
+.stat-bar-fill{height:100%;border-radius:0 2px 2px 0;transition:width .6s ease}
+
+/* ── PROGRESS BARS ── */
+.prog{margin:8px 0}
+.prog-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.prog-name{font-size:12px;color:var(--text2);font-weight:400}
+.prog-vals{font-family:var(--ff-m);font-size:10px;color:var(--text3)}
+.prog-track{height:6px;background:var(--bg5);border-radius:3px;overflow:hidden}
+.prog-fill{height:100%;border-radius:3px;transition:width .6s ease}
+
+/* ── SECTION TITLES ── */
+.sec{font-family:var(--ff-d);font-size:18px;letter-spacing:2px;color:var(--text);margin:24px 0 10px;display:flex;align-items:center;gap:8px}
+.sec::before{content:'';width:3px;height:16px;background:var(--gold);border-radius:2px}
+
+/* ── FORM ── */
+.form-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin:8px 0}
+.form-row{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.form-group{flex:1;min-width:100px}
+.form-label{font-family:var(--ff-m);font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--text3);margin-bottom:4px}
+.form-input{width:100%;background:var(--bg4);border:1px solid var(--border);border-radius:6px;padding:10px 12px;color:var(--text);font-family:var(--ff-b);font-size:14px;outline:none;transition:border-color .2s}
+.form-input:focus{border-color:var(--gold-b)}
+.form-input::placeholder{color:var(--text4)}
+.form-submit{width:100%;padding:14px;background:var(--gold);color:var(--bg);font-family:var(--ff-d);font-size:18px;letter-spacing:2px;border:none;border-radius:6px;cursor:pointer;transition:background .2s;margin-top:4px}
+.form-submit:hover,.form-submit:active{background:#d4ad68}
+
+/* ── CHART ── */
+.chart-wrap{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin:12px 0;overflow-x:auto}
+.chart-tabs{display:flex;gap:4px;margin-bottom:12px;flex-wrap:wrap}
+.chart-tab{font-family:var(--ff-m);font-size:9px;letter-spacing:.8px;text-transform:uppercase;padding:5px 10px;border-radius:4px;border:1px solid var(--border);color:var(--text3);cursor:pointer;transition:all .2s}
+.chart-tab.active{background:var(--gold-g);border-color:var(--gold-b);color:var(--gold)}
+canvas{width:100%!important;height:200px!important}
+
+/* ── HISTORY ── */
+.h-entry{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;margin:6px 0;cursor:pointer;transition:border-color .2s}
+.h-entry:active{border-color:var(--gold-b)}
+.h-date{font-family:var(--ff-m);font-size:10px;color:var(--gold);letter-spacing:.5px;margin-bottom:4px}
+.h-vals{display:flex;flex-wrap:wrap;gap:8px}
+.h-v{font-size:11px;color:var(--text2);font-weight:300}
+.h-v strong{color:var(--text);font-weight:600}
+.h-del{float:right;color:var(--text4);font-size:12px;cursor:pointer;padding:2px 6px;border-radius:4px;transition:color .2s}
+.h-del:hover,.h-del:active{color:var(--red)}
+
+/* ── SETTINGS ── */
+.set-row{display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px solid var(--border)}
+.set-label{font-size:13px;color:var(--text2)}
+.set-btn{font-family:var(--ff-m);font-size:11px;letter-spacing:.5px;padding:8px 16px;border-radius:6px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);cursor:pointer;transition:all .2s}
+.set-btn:hover,.set-btn:active{border-color:var(--gold-b);color:var(--gold)}
+.set-btn.danger{border-color:rgba(196,92,92,0.3);color:var(--red)}
+.set-btn.danger:hover{background:rgba(196,92,92,0.1)}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(60px);background:var(--green);color:#fff;font-family:var(--ff-m);font-size:11px;padding:10px 20px;border-radius:6px;opacity:0;transition:all .3s;z-index:200;pointer-events:none;white-space:nowrap}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+
+/* ── EMPTY STATE ── */
+.empty{text-align:center;padding:40px 20px;color:var(--text3)}
+.empty-icon{font-size:48px;margin-bottom:12px;opacity:.3}
+.empty-text{font-size:13px;font-weight:300;line-height:1.6}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- HEADER -->
+  <div class="app-header">
+    <div class="app-logo">BODY <span>TRACKER</span></div>
+    <div class="app-actions">
+      <div class="app-btn" onclick="showScreen('settings')" title="Settings">⚙</div>
+    </div>
+  </div>
+
+  <!-- SCREEN: DASHBOARD -->
+  <div class="screen active" id="scr-dash">
+    <div class="ring-wrap">
+      <div class="ring-center">
+        <svg width="160" height="160" viewBox="0 0 160 160" id="mainRing">
+          <circle cx="80" cy="80" r="70" fill="none" stroke="var(--bg5)" stroke-width="8"/>
+          <circle cx="80" cy="80" r="70" fill="none" stroke="var(--gold)" stroke-width="8" stroke-linecap="round" stroke-dasharray="440" stroke-dashoffset="440" transform="rotate(-90 80 80)" id="ringCircle"/>
+        </svg>
+        <div style="margin-top:-110px;position:relative;z-index:2">
+          <div class="ring-pct" id="ringPct">0%</div>
+          <div class="ring-sub">Overall Progress</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="stats" id="statCards"></div>
+
+    <div class="sec">GOALS PROGRESS</div>
+    <div id="goalBars"></div>
+
+    <div class="sec">TREND (LAST 10)</div>
+    <div class="chart-wrap">
+      <div class="chart-tabs" id="chartTabs"></div>
+      <canvas id="trendChart"></canvas>
+    </div>
+  </div>
+
+  <!-- SCREEN: ADD -->
+  <div class="screen" id="scr-add">
+    <div class="sec">NEW ENTRY</div>
+    <div class="form-card">
+      <div class="form-row">
+        <div class="form-group">
+          <div class="form-label">Date</div>
+          <input type="date" class="form-input" id="f-date">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <div class="form-label">Weight (kg)</div>
+          <input type="number" step="0.1" class="form-input" id="f-weight" placeholder="67.3">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Body Fat %</div>
+          <input type="number" step="0.1" class="form-input" id="f-bf" placeholder="19">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <div class="form-label">Chest (cm)</div>
+          <input type="number" step="0.1" class="form-input" id="f-chest" placeholder="93.5">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Shoulders (cm)</div>
+          <input type="number" step="0.1" class="form-input" id="f-shoulders" placeholder="109">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <div class="form-label">Arms flexed (cm)</div>
+          <input type="number" step="0.1" class="form-input" id="f-arms" placeholder="31">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Waist (cm)</div>
+          <input type="number" step="0.1" class="form-input" id="f-waist" placeholder="69.5">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <div class="form-label">Thigh (cm)</div>
+          <input type="number" step="0.1" class="form-input" id="f-thigh" placeholder="57">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Calf (cm)</div>
+          <input type="number" step="0.1" class="form-input" id="f-calf" placeholder="34">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <div class="form-label">Neck (cm)</div>
+          <input type="number" step="0.1" class="form-input" id="f-neck" placeholder="38">
+        </div>
+      </div>
+      <button class="form-submit" onclick="saveEntry()">SAVE ENTRY</button>
+    </div>
+  </div>
+
+  <!-- SCREEN: HISTORY -->
+  <div class="screen" id="scr-history">
+    <div class="sec">MEASUREMENT HISTORY</div>
+    <div id="historyList"></div>
+  </div>
+
+  <!-- SCREEN: SETTINGS -->
+  <div class="screen" id="scr-settings">
+    <div class="sec">DATA</div>
+    <div class="set-row"><div class="set-label">Export all data as JSON</div><div class="set-btn" onclick="exportData()">Export</div></div>
+    <div class="set-row"><div class="set-label">Import data from JSON</div><div class="set-btn" onclick="document.getElementById('importFile').click()">Import</div></div>
+    <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
+    <div class="set-row"><div class="set-label">Delete ALL data</div><div class="set-btn danger" onclick="clearAll()">Reset</div></div>
+
+    <div class="sec">GOALS</div>
+    <div class="form-card">
+      <div class="form-row">
+        <div class="form-group"><div class="form-label">Goal Weight (kg)</div><input type="number" step="0.1" class="form-input" id="g-weight" value="65"></div>
+        <div class="form-group"><div class="form-label">Goal Body Fat %</div><input type="number" step="0.1" class="form-input" id="g-bf" value="12"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><div class="form-label">Goal Chest</div><input type="number" step="0.1" class="form-input" id="g-chest" value="103"></div>
+        <div class="form-group"><div class="form-label">Goal Shoulders</div><input type="number" step="0.1" class="form-input" id="g-shoulders" value="114"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><div class="form-label">Goal Arms</div><input type="number" step="0.1" class="form-input" id="g-arms" value="36"></div>
+        <div class="form-group"><div class="form-label">Goal Waist</div><input type="number" step="0.1" class="form-input" id="g-waist" value="69"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><div class="form-label">Goal Thigh</div><input type="number" step="0.1" class="form-input" id="g-thigh" value="58"></div>
+        <div class="form-group"><div class="form-label">Goal Calf</div><input type="number" step="0.1" class="form-input" id="g-calf" value="36"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><div class="form-label">Goal Neck</div><input type="number" step="0.1" class="form-input" id="g-neck" value="40"></div>
+      </div>
+      <button class="form-submit" onclick="saveGoals()">SAVE GOALS</button>
+    </div>
+
+    <div class="sec">ABOUT</div>
+    <div style="padding:12px 0;font-size:12px;color:var(--text3);line-height:1.8">
+      Body Tracker PWA v1.0<br>
+      Part of the Body Protocol system.<br>
+      Data stored locally on your device.<br>
+      Add to Home Screen for app-like experience.
+    </div>
+  </div>
+
+  <!-- BOTTOM NAV -->
+  <div class="bnav">
+    <div class="bnav-item active" onclick="showScreen('dash')"><div class="bnav-icon">◉</div><div class="bnav-label">Dashboard</div></div>
+    <div class="bnav-item" onclick="showScreen('add')"><div class="bnav-icon">＋</div><div class="bnav-label">Add</div></div>
+    <div class="bnav-item" onclick="showScreen('history')"><div class="bnav-icon">☰</div><div class="bnav-label">History</div></div>
+    <div class="bnav-item" onclick="showScreen('settings')"><div class="bnav-icon">⚙</div><div class="bnav-label">Settings</div></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── DATA LAYER ───
+const FIELDS = ['weight','bf','chest','shoulders','arms','waist','thigh','calf','neck'];
+const LABELS = {weight:'Weight',bf:'Body Fat',chest:'Chest',shoulders:'Shoulders',arms:'Arms',waist:'Waist',thigh:'Thigh',calf:'Calf',neck:'Neck'};
+const UNITS = {weight:'kg',bf:'%',chest:'cm',shoulders:'cm',arms:'cm',waist:'cm',thigh:'cm',calf:'cm',neck:'cm'};
+const COLORS = {weight:'var(--gold)',bf:'var(--red)',chest:'var(--blue)',shoulders:'var(--orange)',arms:'var(--purple)',waist:'var(--green)',thigh:'var(--blue)',calf:'var(--orange)',neck:'var(--purple)'};
+
+const START = {weight:67.35,bf:19,chest:93.5,shoulders:109,arms:31,waist:69.5,thigh:57,calf:34,neck:38};
+const DEFAULT_GOALS = {weight:65,bf:12,chest:103,shoulders:114,arms:36,waist:69,thigh:58,calf:36,neck:40};
+
+function getData(){ try{return JSON.parse(localStorage.getItem('bt_entries')||'[]')}catch(e){return []} }
+function setData(d){ localStorage.setItem('bt_entries',JSON.stringify(d)) }
+function getGoals(){ try{return JSON.parse(localStorage.getItem('bt_goals'))||DEFAULT_GOALS}catch(e){return DEFAULT_GOALS} }
+function setGoalsData(g){ localStorage.setItem('bt_goals',JSON.stringify(g)) }
+
+// ─── NAVIGATION ───
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.bnav-item').forEach(b=>b.classList.remove('active'));
+  document.getElementById('scr-'+id).classList.add('active');
+  const idx={dash:0,add:1,history:2,settings:3}[id]||0;
+  document.querySelectorAll('.bnav-item')[idx].classList.add('active');
+  if(id==='dash') renderDashboard();
+  if(id==='history') renderHistory();
+  if(id==='add'){ document.getElementById('f-date').value=new Date().toISOString().split('T')[0]; }
+  if(id==='settings') loadGoalInputs();
+}
+
+// ─── SAVE ENTRY ───
+function saveEntry(){
+  const entry={date:document.getElementById('f-date').value};
+  if(!entry.date){toast('Please select a date');return}
+  let hasValue=false;
+  FIELDS.forEach(f=>{
+    const v=parseFloat(document.getElementById('f-'+f).value);
+    if(!isNaN(v)){entry[f]=v;hasValue=true}
+  });
+  if(!hasValue){toast('Enter at least one measurement');return}
+  const data=getData();
+  // Remove existing entry for same date
+  const filtered=data.filter(e=>e.date!==entry.date);
+  filtered.push(entry);
+  filtered.sort((a,b)=>a.date.localeCompare(b.date));
+  setData(filtered);
+  FIELDS.forEach(f=>document.getElementById('f-'+f).value='');
+  toast('Entry saved ✓');
+  showScreen('dash');
+}
+
+// ─── GOALS ───
+function loadGoalInputs(){
+  const g=getGoals();
+  FIELDS.forEach(f=>{const el=document.getElementById('g-'+f);if(el)el.value=g[f]||''});
+}
+function saveGoals(){
+  const g={};
+  FIELDS.forEach(f=>{const v=parseFloat(document.getElementById('g-'+f).value);if(!isNaN(v))g[f]=v});
+  setGoalsData(g);
+  toast('Goals saved ✓');
+}
+
+// ─── DASHBOARD ───
+function renderDashboard(){
+  const data=getData();
+  const goals=getGoals();
+  const latest=data.length?data[data.length-1]:{};
+  const prev=data.length>1?data[data.length-2]:{};
+
+  // Stat cards
+  const mainFields=['weight','bf','chest','arms'];
+  let statsHTML='';
+  mainFields.forEach(f=>{
+    const cur=latest[f]||START[f];
+    const prv=prev[f]||START[f];
+    const goal=goals[f]||DEFAULT_GOALS[f];
+    const diff=cur-prv;
+    const isLower=f==='weight'||f==='bf'||f==='waist';
+    const good=isLower?diff<=0:diff>=0;
+    const pct=calcProgress(f,cur,goal);
+    const dSign=diff>0?'+':'';
+    const dClass=diff===0?'neutral':(good?'pos':'neg');
+    statsHTML+=`<div class="stat"><div class="stat-label">${LABELS[f]}</div><div class="stat-val">${cur}<span class="stat-unit">${UNITS[f]}</span></div><div class="stat-delta ${dClass}">${diff!==0?dSign+diff.toFixed(1)+' '+UNITS[f]:'—'}</div><div class="stat-bar"><div class="stat-bar-fill" style="width:${pct}%;background:${COLORS[f]}"></div></div></div>`;
+  });
+  document.getElementById('statCards').innerHTML=statsHTML;
+
+  // Goal bars
+  let goalsHTML='';
+  FIELDS.forEach(f=>{
+    const cur=latest[f]||START[f];
+    const goal=goals[f];
+    if(!goal)return;
+    const pct=calcProgress(f,cur,goal);
+    goalsHTML+=`<div class="prog"><div class="prog-head"><div class="prog-name">${LABELS[f]}</div><div class="prog-vals">${cur} → ${goal} ${UNITS[f]} · ${Math.round(pct)}%</div></div><div class="prog-track"><div class="prog-fill" style="width:${Math.min(pct,100)}%;background:${COLORS[f]}"></div></div></div>`;
+  });
+  document.getElementById('goalBars').innerHTML=goalsHTML;
+
+  // Overall progress ring
+  let totalPct=0,count=0;
+  FIELDS.forEach(f=>{
+    const cur=latest[f]||START[f];
+    const goal=goals[f];
+    if(goal){totalPct+=calcProgress(f,cur,goal);count++}
+  });
+  const overall=count?Math.round(totalPct/count):0;
+  document.getElementById('ringPct').textContent=overall+'%';
+  const circ=2*Math.PI*70;
+  document.getElementById('ringCircle').style.strokeDashoffset=circ-(circ*Math.min(overall,100)/100);
+
+  // Chart
+  renderChartTabs(data);
+}
+
+function calcProgress(field,current,goal){
+  const start=START[field]||current;
+  const isLower=field==='weight'||field==='bf'||field==='waist';
+  if(isLower){
+    if(start<=goal)return 100;
+    const total=start-goal;
+    const done=start-current;
+    return Math.max(0,Math.min(100,(done/total)*100));
+  }else{
+    if(start>=goal)return 100;
+    const total=goal-start;
+    const done=current-start;
+    return Math.max(0,Math.min(100,(done/total)*100));
+  }
+}
+
+// ─── CHART ───
+let activeChart='weight';
+function renderChartTabs(data){
+  const tabs=document.getElementById('chartTabs');
+  tabs.innerHTML=FIELDS.map(f=>`<div class="chart-tab ${f===activeChart?'active':''}" onclick="activeChart='${f}';renderDashboard()">${LABELS[f]}</div>`).join('');
+  drawChart(data,activeChart);
+}
+
+function drawChart(data,field){
+  const canvas=document.getElementById('trendChart');
+  const ctx=canvas.getContext('2d');
+  const dpr=window.devicePixelRatio||1;
+  const rect=canvas.parentElement.getBoundingClientRect();
+  canvas.width=rect.width*dpr;
+  canvas.height=200*dpr;
+  canvas.style.height='200px';
+  ctx.scale(dpr,dpr);
+  const W=rect.width,H=200;
+  ctx.clearRect(0,0,W,H);
+
+  const entries=data.filter(e=>e[field]!==undefined).slice(-10);
+  if(entries.length<2){
+    ctx.fillStyle='#44424d';ctx.font='12px "DM Sans"';ctx.textAlign='center';
+    ctx.fillText('Need at least 2 entries to show trend',W/2,H/2);return;
+  }
+
+  const vals=entries.map(e=>e[field]);
+  const goal=getGoals()[field];
+  const mn=Math.min(...vals,goal||Infinity)*0.97;
+  const mx=Math.max(...vals,goal||-Infinity)*1.03;
+  const range=mx-mn||1;
+  const pad={t:20,b:30,l:8,r:8};
+  const cw=W-pad.l-pad.r,ch=H-pad.t-pad.b;
+
+  // Goal line
+  if(goal){
+    const gy=pad.t+ch-(((goal-mn)/range)*ch);
+    ctx.strokeStyle='rgba(197,160,94,0.3)';ctx.lineWidth=1;ctx.setLineDash([4,4]);
+    ctx.beginPath();ctx.moveTo(pad.l,gy);ctx.lineTo(W-pad.r,gy);ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle='rgba(197,160,94,0.5)';ctx.font='10px "JetBrains Mono"';ctx.textAlign='right';
+    ctx.fillText('goal: '+goal,W-pad.r,gy-4);
+  }
+
+  // Line + gradient
+  const pts=vals.map((v,i)=>({x:pad.l+(i/(vals.length-1))*cw,y:pad.t+ch-(((v-mn)/range)*ch)}));
+  
+  // Gradient fill
+  const grad=ctx.createLinearGradient(0,pad.t,0,H-pad.b);
+  grad.addColorStop(0,'rgba(197,160,94,0.15)');grad.addColorStop(1,'rgba(197,160,94,0)');
+  ctx.beginPath();ctx.moveTo(pts[0].x,H-pad.b);
+  pts.forEach(p=>ctx.lineTo(p.x,p.y));
+  ctx.lineTo(pts[pts.length-1].x,H-pad.b);ctx.closePath();ctx.fillStyle=grad;ctx.fill();
+
+  // Line
+  ctx.beginPath();ctx.moveTo(pts[0].x,pts[0].y);
+  pts.forEach(p=>ctx.lineTo(p.x,p.y));
+  ctx.strokeStyle='var(--gold)';ctx.lineWidth=2;ctx.lineJoin='round';ctx.stroke();
+
+  // Dots + labels
+  pts.forEach((p,i)=>{
+    ctx.beginPath();ctx.arc(p.x,p.y,3.5,0,Math.PI*2);ctx.fillStyle='var(--gold)';ctx.fill();
+    ctx.fillStyle='var(--text3)';ctx.font='9px "JetBrains Mono"';ctx.textAlign='center';
+    ctx.fillText(vals[i].toFixed(1),p.x,p.y-10);
+    // Date label at bottom
+    const d=entries[i].date.slice(5);
+    ctx.fillText(d,p.x,H-pad.b+14);
+  });
+}
+
+// ─── HISTORY ───
+function renderHistory(){
+  const data=getData().slice().reverse();
+  const el=document.getElementById('historyList');
+  if(!data.length){el.innerHTML='<div class="empty"><div class="empty-icon">📊</div><div class="empty-text">No entries yet.<br>Add your first measurement to start tracking.</div></div>';return}
+  el.innerHTML=data.map((e,i)=>{
+    const vals=FIELDS.filter(f=>e[f]!==undefined).map(f=>`<div class="h-v"><strong>${e[f]}</strong> ${UNITS[f]} ${LABELS[f].toLowerCase()}</div>`).join('');
+    const realIdx=data.length-1-i;
+    return `<div class="h-entry"><div class="h-date">${formatDate(e.date)}<span class="h-del" onclick="event.stopPropagation();deleteEntry(${realIdx})">✕</span></div><div class="h-vals">${vals}</div></div>`;
+  }).join('');
+}
+
+function deleteEntry(idx){
+  if(!confirm('Delete this entry?'))return;
+  const data=getData();data.splice(idx,1);setData(data);renderHistory();toast('Entry deleted');
+}
+
+function formatDate(d){
+  const dt=new Date(d+'T00:00:00');
+  return dt.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+}
+
+// ─── EXPORT / IMPORT ───
+function exportData(){
+  const payload={entries:getData(),goals:getGoals(),exported:new Date().toISOString()};
+  const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='body-tracker-data.json';document.body.appendChild(a);a.click();document.body.removeChild(a);
+  toast('Data exported ✓');
+}
+
+function importData(event){
+  const file=event.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      const payload=JSON.parse(e.target.result);
+      if(payload.entries){setData(payload.entries)}
+      if(payload.goals){setGoalsData(payload.goals)}
+      toast('Data imported ✓ ('+payload.entries.length+' entries)');
+      showScreen('dash');
+    }catch(err){toast('Invalid file format')}
+  };
+  reader.readAsText(file);
+  event.target.value='';
+}
+
+function clearAll(){
+  if(!confirm('Delete ALL data? This cannot be undone.'))return;
+  if(!confirm('Are you really sure?'))return;
+  localStorage.removeItem('bt_entries');localStorage.removeItem('bt_goals');
+  toast('All data cleared');showScreen('dash');
+}
+
+// ─── TOAST ───
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500)}
+
+// ─── INIT ───
+document.getElementById('f-date').value=new Date().toISOString().split('T')[0];
+// Seed with initial data if empty
+if(!getData().length){
+  setData([{date:'2026-04-26',weight:67.35,bf:19,chest:93.5,shoulders:109,arms:31,waist:69.5,thigh:57,calf:34,neck:38}]);
+}
+renderDashboard();
+</script>
+</body>
+</html>
